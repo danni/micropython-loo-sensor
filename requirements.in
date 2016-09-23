@@ -1,4 +1,7 @@
 Flask
 AC-Flask-Hipchat
 
+gunicorn
+futures
+
 enum34

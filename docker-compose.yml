@@ -1,14 +1,21 @@
 version: '2'
 
 services:
+    web:
+        build: .
+        ports:
+            - 80:80
+
+        environment:
+            REDISTOGO_URL: redis://redis:6379
+            MONGOHQ_URL: mongo://mongodb:27017
+
+        links:
+            - redis
+            - mongodb
+
     redis:
         image: redis
 
-        ports:
-            - 6379:6379
-
     mongodb:
         image: mongo
-
-        ports:
-            - 27017:27017
