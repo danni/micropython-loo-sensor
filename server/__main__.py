@@ -6,13 +6,12 @@ Things device.
 from __future__ import unicode_literals, absolute_import, print_function
 
 import enum
-import functools
 from datetime import datetime
 
 from flask import Flask, _request_ctx_stack
 from ac_flask.hipchat import Addon, addon_client, events, tenant
 from ac_flask.hipchat.glance import Glance
-from ac_flask.hipchat.auth import require_tenant
+from ac_flask.hipchat.db import redis
 
 # pylint:disable=invalid-name
 app = Flask(__name__)
@@ -77,12 +76,38 @@ def notify(status):
     STATUS.status = status
     STATUS.timestamp = datetime.now()
 
-    events.fire_event('loo', STATUS)
+    events.fire_event('update_glances', STATUS)
 
     if status is Status.UNKNOWN:
         return "Unknown status"
     else:
         return "Ok!"
+
+
+def update_glance(tenant, data):
+    """Update a single glance."""
+    print("Updating glance for", tenant)
+    try:
+        ctx = _request_ctx_stack.top
+        ctx.push()
+
+        ctx.tenant = tenant
+
+        addon_client.update_room_glance('loo',
+                                        get_glance(),
+                                        tenant.room_id)
+
+    finally:
+        ctx.pop()
+
+
+@events.event_listener
+def update_glances(data):
+    """Update all glances with the list of listening tenants."""
+    tenants = redis.hvals('glance_tenants')
+
+    for tenant in tenants:
+        update_glance(tenant, data)
 
 
 @addon.glance(key='loo', name="Loo", target='', icon='')
@@ -91,23 +116,9 @@ def register_glance():
 
     print("Tenant", tenant)
 
-    def update_glance(tenant, data):
-        print("Updating glance", tenant)
-        try:
-            ctx = _request_ctx_stack.top
-            ctx.push()
-
-            ctx.tenant = tenant
-
-            addon_client.update_room_glance('loo',
-                                            get_glance(),
-                                            tenant.room_id)
-
-        finally:
-            ctx.pop()
-
-    events.register_event("loo", functools.partial(update_glance,
-                                                   tenant._get_current_object()))
+    redis.hset('glance_tenants',
+               (tenant.group_id, tenant.room_id),
+               tenant._get_current_object())
 
     return get_glance()
 
