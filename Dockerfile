@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8
 
 WORKDIR /app
+EXPOSE 80
+
 # launch gunicorn
 # Do this as threads rather than processes because we need to share state
 # between requests (i.e. for dynamically registered event listeners).
