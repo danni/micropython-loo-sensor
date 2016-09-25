@@ -9,7 +9,7 @@ import enum
 from datetime import datetime
 
 from flask import Flask, _request_ctx_stack
-from ac_flask.hipchat import Addon, addon_client, events, tenant
+from ac_flask.hipchat import Addon, Tenant, addon_client, events, tenant
 from ac_flask.hipchat.glance import Glance
 from ac_flask.hipchat.db import redis
 
@@ -107,6 +107,7 @@ def update_glances(data):
     tenants = redis.hvals('glance_tenants')
 
     for tenant in tenants:
+        tenant = Tenant.load(tenant)
         update_glance(tenant, data)
 
 
@@ -118,7 +119,7 @@ def register_glance():
 
     redis.hset('glance_tenants',
                (tenant.group_id, tenant.room_id),
-               tenant._get_current_object())
+               tenant.id)
 
     return get_glance()
 
